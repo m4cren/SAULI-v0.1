@@ -1,0 +1,28 @@
+# Credentials and local environments
+.env
+.env.*
+!.env.example
+!.env.local.example
+.venv/
+venv/
+
+# Python and verification artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Frontend dependencies and builds
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local-only tooling and diagnostics
+.tools/
+.artifacts/
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,11 @@
+{
+  "name": "sauli-database-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node run-sql-tests.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8"
+  }
+}
