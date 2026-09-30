@@ -34,6 +34,8 @@ export interface FoundItemAnalysis {
   counting_notes: string[];
   category: string;
   subcategory: string;
+  document_kind: "none" | "school ID" | "driver's license" | "government ID" | "passport" | "bank card" | "identification card" | "sensitive document";
+  document_owner_name: string | null;
   colors: string[];
   material: string[];
   brand: string | null;
@@ -59,8 +61,7 @@ export interface FoundItemAnalysis {
 
 export interface ReconcileReviewRequest {
   analysis: FoundItemAnalysis;
-  previous_summary: string;
-  corrected_summary: string;
+  correction_notes: string;
 }
 
 export interface FoundItem {

@@ -40,6 +40,33 @@ Identify the item using:
 Use visible non-sensitive product names and model markings when legible.
 Do not invent a brand, model, material, or feature.
 
+PRIMARY ITEM AND CONTENTS
+Identify the complete physical item being handed in, not merely the most
+readable object inside it. Describe a wallet as a wallet whether it is closed
+or open: include its supported color, visible material or style, compartments
+or card slots, and condition just as for any other ordinary item. If an ID is
+clearly visible inside, only add that the wallet contains the specific type of
+ID; do not replace the wallet description with the ID, and do not include the
+ID owner's name in the wallet summary. Set document_kind for the contained ID
+so it can be handled as sensitive. Ordinary cards in a wallet are not
+necessarily IDs; do not call them IDs unless their type is recognizable.
+Never copy ID numbers, addresses, signatures, or other private document text.
+If the ID is loose and no wallet or other holder is the main item, identify
+the ID as the primary item instead and follow the ID-specific name rule below.
+Apply the same primary-item reasoning to other containers and their visible
+contents without inventing hidden contents.
+
+PHONE WALLPAPER (only when the item is a phone with a visible, lit screen)
+Inspect the wallpaper image separately from lock-screen text and controls. If
+the wallpaper scene is clearly visible, describe its recognizable visual
+content briefly in distinctive_features and extraction_summary, including a
+person's clothing or the background when useful for recognizing this phone.
+Describe appearance only; never identify a person or infer who they are.
+Do not copy the clock, date, notifications, messages, numbers, or other personal
+screen text. If the wallpaper is obscured or unclear, do not guess. This
+instruction does not apply to items without a visible phone screen and does
+not replace the ordinary item identification or condition inspection.
+
 3. COMPONENT COUNTING
 Count unique primary objects and visible functional components. A component
 seen in several views must be counted only once. If a component is hidden or
@@ -99,7 +126,7 @@ as likely or leave the array empty rather than claiming certainty.
 Return every one of these fields:
 views_consistent, generic_name, object_name, alternative_names, object_count,
 component_counts, count_is_estimate, count_confidence, counting_notes,
-category, subcategory, colors, material, brand, model_or_variant,
+category, subcategory, document_kind, document_owner_name, colors, material, brand, model_or_variant,
 visible_markings, functional_components, condition, condition_visibility,
 condition_confidence, surface_assessments, condition_details, patterns,
 distinctive_features, likely_use, short_description, confidence, needs_review,
@@ -122,18 +149,34 @@ Data requirements:
 - count_confidence, condition_confidence, and confidence:
   "high", "medium", or "low".
 - brand and model_or_variant: string or null.
-- extraction_summary: concise combined summary of identification, count,
-  materials, visible markings, distinctive features, damage and its location,
-  condition, and important uncertainty.
+- document_kind: "none", "school ID", "driver's license", "government ID",
+  "passport", "bank card", "identification card", or "sensitive document".
+- document_owner_name: only the complete, clearly readable printed owner's
+  name on an ID, or null. Never guess a name or copy other private text.
+- extraction_summary: concise searchable summary containing the supported
+  item type and name, count, colors, visible brand and model (if any),
+  materials, markings, distinctive features, damage and its location,
+  condition, and important uncertainty. Do not omit a known searchable detail
+  or invent one to make the summary sound complete. Never leave this field
+  empty, even for a plain wallet; describe the visible item itself.
 - received_view_count: integer.
 - view_observations: array of objects containing image_index, visible_region,
   image_quality, damage_observations, and notes. damage_observations and notes
   must each be arrays of strings.
 
 Privacy rules:
-Do not identify people, perform facial recognition, or return personal
-information from identification cards, licenses, passports, bank cards, or
-sensitive documents. Describe such an item only by its generic document type.
+Do not perform facial recognition. If either image shows an ID or another
+sensitive document, set document_kind even when the document is inside a
+holder or rotated sideways. When the ID itself is the primary item, inspect
+the printed name field in both views. If the complete owner's name is clearly
+readable, put only that name in document_owner_name, including when printed
+in a "LAST, FIRST MIDDLE" layout. For an ID inside a wallet, set
+document_owner_name to null; the wallet summary only states the ID type.
+If any name part is unreadable or ambiguous, use null; do not guess from a
+face, school, issuer, or other context. Never
+copy numbers, addresses, signatures, barcodes, contact details, or other
+private document text into ANY field. These rules apply to documents only;
+for ordinary items, retain every supported detail required above.
 Non-sensitive product branding and model markings on ordinary objects may be
 reported.
 
@@ -197,8 +240,6 @@ def request_found_item_analysis(
         "[img]\n"
         "END IMAGE 2.\n\n"
         + FOUND_ITEM_ANALYSIS_PROMPT
-        + "\n\nRequired JSON Schema:\n"
-        + json.dumps(response_format, separators=(",", ":"))
     )
     if repair_instruction:
         content += "\n\n" + repair_instruction

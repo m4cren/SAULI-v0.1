@@ -52,10 +52,12 @@ class FakeAI:
         return analysis()
 
     async def reconcile_found_item_review(
-        self, current, previous_summary, corrected_summary
+        self, current, correction_notes
     ):
-        self.review_calls.append((current, previous_summary, corrected_summary))
-        return current.model_copy(update={"extraction_summary": corrected_summary})
+        self.review_calls.append((current, correction_notes))
+        return current.model_copy(update={
+            "extraction_summary": f"{current.extraction_summary} Corrected item details.",
+        })
 
     async def extract_query(self, search, image):
         return QueryAnalysis(generic_name="wallet", colors=["black"])

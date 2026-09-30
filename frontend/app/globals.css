@@ -187,6 +187,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--aqua); box-shado
 .page-footer { margin-top: 30px; padding: 24px 4px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; color: #859391; font-size: 9px; letter-spacing: .06em; }
 .item-image { position: relative; overflow: hidden; display: grid; place-items: center; border-radius: 12px; color: #7c8c8a; background: #e5ebea; text-align: center; font-size: 9px; }
 .item-image img { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; max-width: 100%; max-height: 100%; object-fit: contain !important; object-position: center !important; }
+.sensitive-id-image img { filter: blur(12px); }
 
 /* Anonymous retriever */
 .retrieve-main { min-height: calc(100vh - 76px); display: grid; grid-template-columns: minmax(330px, 43%) minmax(390px, 57%); }
@@ -432,14 +433,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--aqua); box-shado
 .review-field-grid { min-inline-size: 0; margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 15px 14px; }
 .review-field-grid .field { min-width: 0; margin: 0; }
 .review-field-grid .field > label { display: block; margin: 0 0 7px; color: var(--ink); font-size: 10px; font-weight: 800; }
+.review-summary-label { display: block; margin: 0 0 7px; color: var(--ink); font-size: 10px; font-weight: 800; }
+.review-summary-text { min-height: 78px; margin: 0; padding: 12px 13px; border: 1px solid #d1d7d6; border-radius: 9px; color: var(--ink); background: #f6f9f8; font-size: 11px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.field-optional { color: #7b8987; font-size: 9px; font-weight: 500; }
 .review-field-grid input, .review-field-grid select { height: 43px; font-size: 11px; }
 .review-field-grid textarea { min-height: 78px; font-size: 11px; line-height: 1.5; }
 .review-field-wide { grid-column: 1 / -1; }
-.summary-reconcile { margin-top: 8px; padding: 10px 11px; border: 1px solid #d2dfdd; border-radius: 9px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #5f716f; background: #f6f9f8; }
-.summary-reconcile strong { display: block; margin-bottom: 2px; color: var(--ink); font-size: 9px; }
-.summary-reconcile p { margin: 0; font-size: 8px; line-height: 1.45; }
-.summary-reconcile button { flex: 0 0 auto; min-height: 31px; padding: 6px 9px; border: 1px solid #8ab8b3; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--teal); background: white; font-size: 8px; font-weight: 800; }
-.summary-reconcile button:disabled { opacity: .55; cursor: not-allowed; }
 .kiosk-review-actions { margin-top: 20px; display: grid; grid-template-columns: 1.25fr .75fr; gap: 9px; }
 .sauli-review-disclaimer { margin: 11px 0 0; color: #7b8987; text-align: center; font-size: 8px; line-height: 1.45; }
 
@@ -529,8 +528,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--aqua); box-shado
   .kiosk-review-fields { padding: 18px; }
   .review-field-grid { grid-template-columns: 1fr; gap: 14px; }
   .review-field-wide { grid-column: auto; }
-  .summary-reconcile { align-items: stretch; flex-direction: column; }
-  .summary-reconcile button { width: 100%; }
   .kiosk-review-actions { grid-template-columns: 1fr; }
   .kiosk-identifying { margin: 0; }
   .kiosk-identifying > .kiosk-steps { margin-bottom: 20px; }

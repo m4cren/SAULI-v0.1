@@ -42,7 +42,9 @@ async def health(request: Request):
     database_status, storage_status, ollama = await asyncio.gather(
         database_check(), storage_check(), request.app.state.ai.health()
     )
-    return HealthResponse(database=database_status, storage=storage_status, ollama=ollama)
+    return HealthResponse(
+        database=database_status, storage=storage_status, ollama=ollama
+    )
 
 
 def _found_at(value: str | None) -> datetime:
@@ -115,8 +117,7 @@ async def reconcile_found_item_review(
     """Update related semantic fields before any upload or database write occurs."""
     return await request.app.state.ai.reconcile_found_item_review(
         payload.analysis,
-        payload.previous_summary,
-        payload.corrected_summary,
+        payload.correction_notes,
     )
 
 
@@ -154,13 +155,25 @@ async def confirm_and_store(
         async def stream():
             try:
                 async for event in events:
-                    yield "data: " + PipelineEvent.model_validate(event).model_dump_json(exclude_none=True) + "\n\n"
+                    yield "data: " + PipelineEvent.model_validate(
+                        event
+                    ).model_dump_json(exclude_none=True) + "\n\n"
             except ServiceError as error:
-                yield "data: " + PipelineEvent(stage="error", message=error.message, status=error.status_code).model_dump_json(exclude_none=True) + "\n\n"
+                yield "data: " + PipelineEvent(
+                    stage="error", message=error.message, status=error.status_code
+                ).model_dump_json(exclude_none=True) + "\n\n"
             except Exception:
-                yield "data: " + PipelineEvent(stage="error", message="The item could not be processed. Please check backend configuration and retry.", status=500).model_dump_json(exclude_none=True) + "\n\n"
+                yield "data: " + PipelineEvent(
+                    stage="error",
+                    message="The item could not be processed. Please check backend configuration and retry.",
+                    status=500,
+                ).model_dump_json(exclude_none=True) + "\n\n"
 
-        return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+        return StreamingResponse(
+            stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
     async for event in events:
         if event["stage"] == "complete":
             return FoundItem.model_validate(event["item"])
@@ -169,12 +182,17 @@ async def confirm_and_store(
 
 @router.post("/api/matches/search", response_model=SearchResponse)
 async def search(request: Request):
-    content_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    content_type = (
+        request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    )
     image = None
     try:
         if content_type == "application/json":
             payload = await request.json()
-        elif content_type in ("multipart/form-data", "application/x-www-form-urlencoded"):
+        elif content_type in (
+            "multipart/form-data",
+            "application/x-www-form-urlencoded",
+        ):
             async with request.form(
                 max_files=1,
                 max_fields=9,
@@ -186,7 +204,9 @@ async def search(request: Request):
                 query_image = payload.pop("query_image", None)
                 if query_image is not None:
                     if not isinstance(query_image, StarletteUploadFile):
-                        raise ServiceError("The query photo must be an image upload.", 400)
+                        raise ServiceError(
+                            "The query photo must be an image upload.", 400
+                        )
                     image = await read_upload(
                         query_image, request.app.state.settings.max_image_bytes
                     )
@@ -194,8 +214,17 @@ async def search(request: Request):
             raise ServiceError("Send the search as JSON or a multipart form.", 400)
         search_input = SearchInput.model_validate(payload)
     except (ValueError, ValidationError):
-        raise ServiceError("Provide a description, last-seen location, and a date/time with a timezone offset. Check the optional filters.", 422) from None
-    return await search_items(search_input, image, request.app.state.settings, request.app.state.database, request.app.state.ai)
+        raise ServiceError(
+            "Provide a description, last-seen location, and a date/time with a timezone offset. Check the optional filters.",
+            422,
+        ) from None
+    return await search_items(
+        search_input,
+        image,
+        request.app.state.settings,
+        request.app.state.database,
+        request.app.state.ai,
+    )
 
 
 @router.get("/api/found-items/{item_id}", response_model=FoundItem)

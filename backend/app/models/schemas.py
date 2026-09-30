@@ -18,9 +18,15 @@ from pydantic import (
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, max_length=1500)]
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=250)]
-Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=250)]
+Name = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=250)
+]
 TextList = Annotated[list[Text], Field(max_length=60)]
 Confidence = Literal["high", "medium", "low"]
+DocumentKind = Literal[
+    "none", "school ID", "driver's license", "government ID", "passport",
+    "bank card", "identification card", "sensitive document",
+]
 
 
 def _is_exact_type_validation(info: ValidationInfo) -> bool:
@@ -91,7 +97,9 @@ class ComponentCount(AIModel):
 
 class SurfaceAssessment(AIModel):
     component: Name
-    status: Literal["visible_damage", "no_visible_damage", "not_assessable"] = "not_assessable"
+    status: Literal["visible_damage", "no_visible_damage", "not_assessable"] = (
+        "not_assessable"
+    )
     damage_types: TextList = Field(default_factory=list)
     location: Text = ""
     severity: Literal["minor", "moderate", "severe"] | None = None
@@ -111,9 +119,7 @@ class DamageAuditFinding(AIModel):
 
     damage_types: Annotated[list[Name], Field(min_length=1, max_length=8)]
     location: Name
-    image_indices: Annotated[
-        list[Literal[1, 2]], Field(min_length=1, max_length=2)
-    ]
+    image_indices: Annotated[list[Literal[1, 2]], Field(min_length=1, max_length=2)]
     severity: Literal["minor", "moderate", "severe"] | None
     certainty: Literal["confirmed", "probable", "uncertain"]
     geometry_cues: Annotated[list[Name], Field(max_length=8)]
@@ -140,11 +146,14 @@ class DamageAuditFinding(AIModel):
             "warp",
             "warped",
         }
-        if any(
-            word in damage_type.casefold()
-            for damage_type in self.damage_types
-            for word in geometry_damage
-        ) and not self.geometry_cues:
+        if (
+            any(
+                word in damage_type.casefold()
+                for damage_type in self.damage_types
+                for word in geometry_damage
+            )
+            and not self.geometry_cues
+        ):
             raise ValueError(
                 "dent and deformation findings require a visible geometry cue"
             )
@@ -155,9 +164,7 @@ class DamageAuditClearRegion(AIModel):
     """A specifically inspected region with positive no-damage evidence."""
 
     region: Name
-    image_indices: Annotated[
-        list[Literal[1, 2]], Field(min_length=1, max_length=2)
-    ]
+    image_indices: Annotated[list[Literal[1, 2]], Field(min_length=1, max_length=2)]
     evidence: Name
 
     @model_validator(mode="after")
@@ -171,9 +178,7 @@ class DamageAuditUnassessableRegion(AIModel):
     """A region that cannot support either a damage or no-damage claim."""
 
     region: Name
-    image_indices: Annotated[
-        list[Literal[1, 2]], Field(min_length=1, max_length=2)
-    ]
+    image_indices: Annotated[list[Literal[1, 2]], Field(min_length=1, max_length=2)]
     reason: Name
 
     @model_validator(mode="after")
@@ -204,11 +209,10 @@ class FoundItemDamageAudit(AIModel):
             raise ValueError(
                 "damage_present must be true exactly when observations is non-empty"
             )
-        if not (
-            self.observations or self.clear_regions or self.not_assessable_regions
-        ):
+        if not (self.observations or self.clear_regions or self.not_assessable_regions):
             raise ValueError("at least one inspected region must be reported")
         return self
+
 
 class ViewObservation(AIModel):
     image_index: int = Field(ge=1, le=2)
@@ -238,6 +242,8 @@ class FoundItemAnalysis(AIModel):
     counting_notes: TextList = Field(default_factory=list)
     category: ShortText = "unknown"
     subcategory: ShortText = "unknown"
+    document_kind: DocumentKind = "none"
+    document_owner_name: ShortText | None = None
     colors: TextList = Field(default_factory=list)
     material: TextList = Field(default_factory=list)
     brand: ShortText | None = None
@@ -247,7 +253,9 @@ class FoundItemAnalysis(AIModel):
     condition: Literal["new", "good", "fair", "poor", "unknown"] = "unknown"
     condition_visibility: Text = "not_assessable"
     condition_confidence: Confidence = "low"
-    surface_assessments: list[SurfaceAssessment] = Field(default_factory=list, max_length=60)
+    surface_assessments: list[SurfaceAssessment] = Field(
+        default_factory=list, max_length=60
+    )
     condition_details: TextList = Field(default_factory=list)
     patterns: TextList = Field(default_factory=list)
     distinctive_features: TextList = Field(default_factory=list)
@@ -301,13 +309,15 @@ class FoundItemAnalysis(AIModel):
 
 
 class FoundItemReviewReconciliation(AIModel):
-    """Complete canonical semantic state after a finder corrects the summary."""
+    """Complete canonical semantic state after finder review."""
 
     generic_name: Name
     object_name: Name
     alternative_names: TextList
     category: ShortText
     subcategory: ShortText
+    document_kind: DocumentKind
+    document_owner_name: ShortText | None
     colors: TextList
     material: TextList
     brand: ShortText | None
@@ -321,14 +331,17 @@ class FoundItemReviewReconciliation(AIModel):
     likely_use: Text
     short_description: Text
     uncertainty_notes: TextList
+    extraction_summary: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=1500),
+    ]
 
 
 class FoundItemReviewRequest(AIModel):
     """Finder review input; the current structured analysis must keep exact types."""
 
     analysis: FoundItemAnalysis
-    previous_summary: Text = ""
-    corrected_summary: Annotated[
+    correction_notes: Annotated[
         str,
         StringConstraints(strip_whitespace=True, min_length=1, max_length=1500),
     ]
@@ -377,7 +390,11 @@ class MatchAssessment(AIModel):
     @field_validator("ai_similarity", mode="before")
     @classmethod
     def clamp_score(cls, value):
-        if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (float, int))
+            or not math.isfinite(value)
+        ):
             raise ValueError("AI similarity must be a finite number")
         return max(0.0, min(1.0, float(value)))
 
@@ -389,12 +406,22 @@ class APIModel(BaseModel):
 class SearchInput(APIModel):
     anonymous_session_id: UUID
     idempotency_key: UUID
-    description: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=2500)]
-    last_seen_location: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=200)]
+    description: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=3, max_length=2500)
+    ]
+    last_seen_location: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=2, max_length=200)
+    ]
     last_seen_at: AwareDatetime
-    category: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None = None
-    primary_color: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None = None
-    brand: Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] | None = None
+    category: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None
+    ) = None
+    primary_color: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None
+    ) = None
+    brand: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] | None
+    ) = None
 
     @field_validator("last_seen_at")
     @classmethod

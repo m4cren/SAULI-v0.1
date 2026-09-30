@@ -81,25 +81,22 @@ def test_analysis_requires_both_images_and_never_writes(client, dependencies, pn
 def test_review_reconciliation_uses_ai_but_never_writes(client, dependencies):
     database, ai = dependencies
     current = analysis().model_dump(mode="json")
-    previous = current["extraction_summary"]
-    corrected = "Yellow Nike shoe with a damaged heel."
+    note = "This is a yellow Nike shoe with a damaged heel, not a wallet."
 
     response = client.post(
         "/api/found-items/reconcile-review",
         json={
             "analysis": current,
-            "previous_summary": previous,
-            "corrected_summary": corrected,
+            "correction_notes": note,
         },
     )
 
     assert response.status_code == 200, response.text
-    assert response.json()["extraction_summary"] == corrected
+    assert "Corrected item details." in response.json()["extraction_summary"]
     assert len(ai.review_calls) == 1
-    reviewed, old_summary, new_summary = ai.review_calls[0]
+    reviewed, notes = ai.review_calls[0]
     assert reviewed.object_name == current["object_name"]
-    assert old_summary == previous
-    assert new_summary == corrected
+    assert notes == note
     assert database.uploads == {}
     assert database.inserts == []
     assert database.rows == {}
@@ -219,9 +216,32 @@ def test_confirmation_reapplies_sensitive_document_privacy(client, dependencies,
     response = confirm(client, png, analysis_payload=corrected)
     assert response.status_code == 200
     stored = database.rows[response.json()["id"]]["analysis_json"]
-    assert stored["object_name"] == "identification card"
+    assert stored["object_name"] == "school ID"
+    assert stored["document_kind"] == "school ID"
     assert stored["visible_markings"] == []
     assert stored["needs_review"] is True
+
+
+def test_confirmed_id_shows_only_type_and_printed_owner_name(client, dependencies, png):
+    database, _ = dependencies
+    reviewed = analysis().model_dump()
+    reviewed.update({
+        "generic_name": "school ID",
+        "object_name": "School ID number 123456789",
+        "document_kind": "school ID",
+        "document_owner_name": "Juan Dela Cruz",
+        "visible_markings": ["Student number 123456789"],
+        "extraction_summary": "Student number 123456789",
+    })
+    response = confirm(client, png, analysis_payload=reviewed)
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["analysis"]["document_kind"] == "school ID"
+    assert payload["analysis"]["document_owner_name"] == "Juan Dela Cruz"
+    assert payload["analysis"]["extraction_summary"] == "school ID for Juan Dela Cruz."
+    assert "123456789" not in response.text
+    stored = database.rows[payload["id"]]
+    assert "123456789" not in json.dumps(stored)
 
 
 def test_confirmation_streams_only_upload_save_and_complete(client, png):
@@ -233,7 +253,6 @@ def test_confirmation_streams_only_upload_save_and_complete(client, png):
         if line.startswith("data: ")
     ]
     assert [event["stage"] for event in events] == ["uploading", "saving", "complete"]
-    assert "analyzing" not in response.text
 
 
 def test_failed_confirmation_cleans_uploaded_images(client, dependencies, png):

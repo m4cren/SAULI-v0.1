@@ -1,3 +1,5 @@
+import type { FoundItemAnalysis } from "./types";
+
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
@@ -32,4 +34,11 @@ export function manilaNowInput(): string {
 export function readable(value?: string | null): string {
   if (!value) return "Not visible";
   return value.replaceAll("_", " ");
+}
+
+export function isSensitiveId(analysis: Pick<FoundItemAnalysis, "generic_name" | "object_name" | "category" | "subcategory" | "document_kind">): boolean {
+  if (analysis.document_kind && analysis.document_kind !== "none") return true;
+  const label = `${analysis.generic_name} ${analysis.object_name} ${analysis.subcategory}`.toLowerCase();
+  if (/\b(?:identification(?: card)?|id card|school id|student id|government id|national id|driver'?s? licen[cs]e|passport|bank card|credit card|debit card|atm card)\b/.test(label)) return true;
+  return /\bdocument\b/i.test(analysis.category) && /\b(?:id|licen[cs]e)\b/.test(label);
 }
